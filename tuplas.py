@@ -5,7 +5,7 @@ if cantidad > 0:
     for i in range(cantidad):
         ciudad = input(f"Ingrese el nombre de la ciudad {i+1}: ")
         ciudades_temp.append(ciudad)
-    ciudades = tuple(ciudades_temp)  # Convertimos lista a tupla
+    ciudades = tuple(ciudades_temp)  
     print("Tupla de ciudades ingresadas:")
     print(ciudades)
 else:
