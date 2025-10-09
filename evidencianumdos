@@ -1,0 +1,36 @@
+import pandas as pd
+
+ruta_archivo = "heladotarea.csv"
+
+df = pd.read_csv(ruta_archivo, encoding='latin-1')
+
+print(df)
+
+rango_ind = df.index[3:5]
+print("Rango de índices seleccionados:", rango_ind)
+
+filas_seleccionadas = df.loc[rango_ind]
+print("\nFilas seleccionadas:")
+print(filas_seleccionadas)
+
+std_total = df['Total'].std()
+print(f"\nLa desviación estándar de la columna 'Total' es: {std_total}")
+
+var_total = df['Total'].var()
+print(f"La varianza de la columna 'Total' es: {var_total}")
+
+conteo_cant = df.count()
+print("\nConteo total por columna:")
+print(conteo_cant)
+
+conteo_cant_columna = df['Cantidad'].count()
+print(f"\nNúmero de elementos en la columna 'Cantidad': {conteo_cant_columna}")
+
+suma_total = df['Total'].sum()
+print(f"\nLa suma de la columna 'Total' es: {suma_total}")
+
+total_elemento = df.size
+print(f"\nNúmero total de elementos en el DataFrame: {total_elemento}")
+
+total_elemento_final = df['Total'].size
+print(f"Número total de elementos en la columna 'Total': {total_elemento_final}")
