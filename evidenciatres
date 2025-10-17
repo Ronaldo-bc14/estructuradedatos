@@ -1,0 +1,257 @@
+import random as rd
+import sys
+import datetime
+import sqlite3
+from sqlite3 import Error
+from datetime import datetime, timedelta
+import openpyxl
+
+def crear_tablas():
+    try:
+        with sqlite3.connect("evidencia3.db") as conn:
+            cursor = conn.cursor()
+            cursor.execute("CREATE TABLE IF NOT EXISTS Usuarios(clave INTEGER PRIMARY KEY, nombre TEXT NOT NULL);")
+            cursor.execute("CREATE TABLE IF NOT EXISTS Aulas(clave INTEGER PRIMARY KEY, nombre TEXT NOT NULL, capacidad INTEGER);")
+            cursor.execute("CREATE TABLE IF NOT EXISTS Reservaciones(folio INTEGER PRIMARY KEY, nombre TEXT NOT NULL, horario TEXT NOT NULL, fecha TIMESTAMP);")
+            print("Tablas creadas exitosamente")
+    except Error as e:
+        print(e)
+    except Exception as e:
+        print(e)
+
+crear_tablas()
+
+def registrar_reserva():
+    while True:
+        clave_usuario = input("Ingrese su clave de usuario(INGRESE SALIR PARA SALIR DEL PROGRAMA): ")
+        if clave_usuario.upper() == "SALIR":
+            return
+        if not clave_usuario.isdigit():
+            print("La clave de usuario debe ser numerica")
+            continue
+        clave_usuario = int(clave_usuario)
+        try:
+            with sqlite3.connect("evidencia3.db") as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT * FROM Usuarios WHERE clave=?", (clave_usuario,))
+                usuario = cursor.fetchone()
+
+                if not usuario:
+                    print(f"No se encontraron usuarios con la clave {clave_usuario}")
+                    continue
+                else:
+                    print(f"Bienvenido {usuario[1]}")
+        except Exception as e:
+            print(f"Error al verificar el usuario: {e}")
+            continue
+
+        nombre_reserva = input("Ingrese el nombre de la reserva (escribe SALIR para cancelar): ")
+        if nombre_reserva.upper() == "SALIR":
+            return
+
+        horario_reserva = input("Ingrese el horario de la reserva [M,V,N]: ").upper()
+        if horario_reserva not in ["M", "V", "N"]:
+            print("Horario de reserva invalido")
+            continue
+
+        fecha_str = input("Fecha (dd/mm/aaaa): ")
+        try:
+            fecha = datetime.strptime(fecha_str, "%d/%m/%Y")
+        except ValueError:
+            print("Formato de fecha invalido")
+            continue
+
+        if fecha < datetime.now() + timedelta(days=2):
+            print("La fecha debe ser posterior a la fecha actual")
+            continue
+
+        folio = rd.randint(1, 99999)
+        try:
+            with sqlite3.connect("evidencia3.db") as conn:
+                cursor = conn.cursor()
+                cursor.execute("INSERT INTO Reservaciones(folio, nombre, horario, fecha) VALUES (?, ?, ?, ?)",
+                               (folio, nombre_reserva, horario_reserva, fecha))
+                conn.commit()
+                print("Reserva registrada exitosamente")
+        except Exception as e:
+            print(f"Error al registrar la reserva: {e}")
+
+def modificar_reserva():
+    nombre_reserva = input("Ingrese el nombre de la reserva: ")
+    try:
+        with sqlite3.connect("evidencia3.db") as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM Reservaciones WHERE nombre=?", (nombre_reserva,))
+            reserva = cursor.fetchone()
+            if not reserva:
+                print(f"No se encontraron reservas con el nombre {nombre_reserva}")
+                return
+
+            print(f"Reserva encontrada: Folio:{reserva[0]}, Horario:{reserva[2]}, Fecha:{reserva[3]}")
+            nuevo_nombre = input("Ingrese el nuevo nombre de la reserva (escribe SALIR para cancelar): ")
+            if nuevo_nombre.upper() == "SALIR":
+                return
+            cursor.execute("UPDATE Reservaciones SET nombre=? WHERE folio=?", (nuevo_nombre, reserva[0]))
+            conn.commit()
+            print("Reserva modificada exitosamente")
+    except Exception as e:
+        print(f"Error al modificar la reserva: {e}")
+
+def consultar_fechas():
+    fecha_str = input("Ingrese la fecha (dd/mm/aaaa): ")
+    try:
+        fecha = datetime.strptime(fecha_str, "%d/%m/%Y")
+    except ValueError:
+        print("Formato de fecha invalido")
+        return
+    try:
+        with sqlite3.connect("evidencia3.db") as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM Reservaciones WHERE fecha=?", (fecha,))
+            registro = cursor.fetchall()
+            if registro:
+                print("Fecha no disponible")
+            else:
+                print("Fecha disponible")
+    except Exception as e:
+        print(f"Error al consultar la fecha: {e}")
+
+def reporte_fecha():
+    fecha_str = input("Ingrese la fecha (dd/mm/aaaa): ")
+    try:
+        fecha = datetime.strptime(fecha_str, "%d/%m/%Y")
+    except ValueError:
+        print("Formato de fecha invalido")
+        return
+    try:
+        with sqlite3.connect("evidencia3.db") as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM Reservaciones WHERE fecha=?", (fecha,))
+            registros = cursor.fetchall()
+            if registros:
+                print(f"Reservaciones para {fecha_str}:")
+                for fila in registros:
+                    print(f"Folio:{fila[0]}, Nombre:{fila[1]}, Horario:{fila[2]}, Fecha:{fila[3]}")
+            else:
+                print("No hay reservaciones en esa fecha")
+    except Exception as e:
+        print(f"Error en el reporte: {e}")
+
+def registrar_sala():
+    while True:
+        nombre_sala = input("Ingrese el nombre de la sala (escribe SALIR para cancelar): ")
+        if nombre_sala.upper() == "SALIR":
+            return
+        if not nombre_sala.strip():
+            print("El nombre de la sala no puede estar vacío")
+            continue
+
+        capacidad = input("Ingrese la capacidad de la sala: ")
+        if not capacidad.isdigit():
+            print("La capacidad debe ser numérica")
+            continue
+
+        clave = rd.randint(1, 99999)
+        try:
+            with sqlite3.connect("evidencia3.db") as conn:
+                cursor = conn.cursor()
+                cursor.execute("INSERT INTO Aulas(clave, nombre, capacidad) VALUES (?, ?, ?)",
+                               (clave, nombre_sala, int(capacidad)))
+                conn.commit()
+                print(f"Sala registrada exitosamente. CLAVE: {clave}")
+        except Exception as e:
+            print(f"Error al registrar la sala: {e}")
+
+def registrar_cliente():
+    while True:
+        nombre_cliente = input("Ingrese el nombre del cliente (escribe SALIR para cancelar): ")
+        if nombre_cliente.upper() == "SALIR":
+            return
+        if not nombre_cliente.strip():
+            print("El nombre del cliente no puede estar vacío")
+            continue
+        clave = rd.randint(1, 99999)
+        try:
+            with sqlite3.connect("evidencia3.db") as conn:
+                cursor = conn.cursor()
+                cursor.execute("INSERT INTO Usuarios(clave, nombre) VALUES (?, ?)", (clave, nombre_cliente))
+                conn.commit()
+                print(f"Cliente registrado exitosamente. CLAVE: {clave}")
+        except Exception as e:
+            print(f"Error al registrar el cliente: {e}")
+
+def eliminar_reserva():
+    while True:
+        folio = input("Ingrese el folio de la reserva: ")
+        if not folio.isdigit():
+            print("El folio debe ser numérico")
+            continue
+        folio = int(folio)
+        try:
+            with sqlite3.connect("evidencia3.db") as conn:
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM Reservaciones WHERE folio=?", (folio,))
+                conn.commit()
+                if cursor.rowcount > 0:
+                    print("Reserva eliminada exitosamente")
+                else:
+                    print(f"No se encontraron reservas con el folio {folio}")
+        except Exception as e:
+            print(f"Error al eliminar reserva: {e}")
+        break
+
+def exportar_excel():
+    try:
+        with sqlite3.connect("evidencia3.db") as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM Reservaciones")
+            registros = cursor.fetchall()
+
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Reservaciones"
+            ws.append(["Folio", "Nombre", "Horario", "Fecha"])
+            for fila in registros:
+                ws.append(fila)
+            wb.save("reservaciones.xlsx")
+            print("Reporte exportado exitosamente")
+    except Exception as e:
+        print(f"Error al exportar el reporte: {e}")
+
+def menu():
+    while True:
+        print("\nMenu:")
+        print("1. Registrar reserva")
+        print("2. Modificar reserva")
+        print("3. Consultar fechas")
+        print("4. Reporte de fecha")
+        print("5. Registrar sala")
+        print("6. Registrar cliente")
+        print("7. Eliminar reserva")
+        print("8. Exportar reporte")
+        print("9. Salir")
+        opcion = input("Seleccione una opción (1-9): ")
+
+        if opcion == "1":
+            registrar_reserva()
+        elif opcion == "2":
+            modificar_reserva()
+        elif opcion == "3":
+            consultar_fechas()
+        elif opcion == "4":
+            reporte_fecha()
+        elif opcion == "5":
+            registrar_sala()
+        elif opcion == "6":
+            registrar_cliente()
+        elif opcion == "7":
+            eliminar_reserva()
+        elif opcion == "8":
+            exportar_excel()
+        elif opcion == "9":
+            print("Gracias por usar el sistema")
+            sys.exit()
+        else:
+            print("Opción inválida. Por favor, seleccione una opción válida")
+
+menu()
