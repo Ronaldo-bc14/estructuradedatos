@@ -1,0 +1,319 @@
+import random as rd
+import sqlite3
+import openpyxl
+from sqlite3 import Error
+
+def crear_tablas():
+    try:
+        with sqlite3.connect("afis.db") as conn:
+            cursor = conn.cursor()
+           
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS Alumnos(
+                    matricula INTEGER PRIMARY KEY,
+                    nombre TEXT NOT NULL,
+                    cantafis INTEGER DEFAULT 0
+                );
+            """)
+            
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS Afis(
+                    claveafi INTEGER PRIMARY KEY,
+                    nombre_afi TEXT NOT NULL,
+                    categoria TEXT
+                );
+            """)
+            
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS Categoria(
+                    clavecate INTEGER PRIMARY KEY,
+                    nombrecategoria TEXT NOT NULL
+                );
+            """)
+            
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS Registro_afi(
+                    matricula INTEGER,
+                    nombre TEXT,
+                    nombre_afi TEXT,
+                    categoria TEXT,
+                    folioafi INTEGER,
+                    FOREIGN KEY (matricula) REFERENCES Alumnos(matricula)
+                );
+            """)
+            conn.commit()
+            print("Tablas creadas exitosamente.")
+    except Error as e:
+        print("Error al crear las tablas:", e)
+
+def insertar_categorias():
+    lista_categorias = [
+        "Académicas",
+        "Investigación",
+        "Culturales",
+        "Deportivas",
+        "Responsabilidad social",
+        "Aprendizaje de idiomas",
+        "Innovación y emprendimiento"
+    ]
+    try:
+        with sqlite3.connect("afis.db") as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM Categoria")
+            if cursor.fetchone()[0] == 0:
+                for categoria in lista_categorias:
+                    cursor.execute("INSERT INTO Categoria(nombrecategoria) VALUES(?)", (categoria,))
+                conn.commit()
+                print("Categorías insertadas exitosamente.")
+    except Error as e:
+        print("Error al insertar categorías:", e)
+
+def registrar_alumno():
+    while True:
+        nombre_alumno = input("Nombre del alumno (escriba 'SALIR' para cancelar): ")
+        if nombre_alumno.upper() == "SALIR":
+            return
+        if not nombre_alumno.strip():
+            print("El nombre no puede estar vacío.")
+            continue
+        matricula = rd.randint(1999999, 2999999)
+        try:
+            with sqlite3.connect("afis.db") as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "INSERT INTO Alumnos(matricula, nombre) VALUES(?, ?)",
+                    (matricula, nombre_alumno)
+                )
+                conn.commit()
+                print(f"Alumno '{nombre_alumno}' registrado con matrícula {matricula}.")
+        except Error as e:
+            print("Error al registrar el alumno:", e)
+
+def consultar_cantafis():
+    while True:
+        matricula = input("Ingrese la matrícula del alumno (o 'SALIR' para cancelar): ")
+        if matricula.upper() == "SALIR":
+            return
+        if not matricula.strip():
+            print("La matrícula no puede estar vacía.")
+            continue
+        try:
+            with sqlite3.connect("afis.db") as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT cantafis FROM Alumnos WHERE matricula=?", (matricula,))
+                cantafis = cursor.fetchone()
+                if cantafis:
+                    if cantafis[0] >= 2:
+                        print(f"El alumno con matrícula {matricula} ha completado la cantidad necesaria de AFIs: {cantafis[0]}")
+                    elif cantafis[0] == 1:
+                        print(f"El alumno con matrícula {matricula} tiene {cantafis[0]} AFI. Le hace falta 1 para completarlas.")
+                    else:
+                        print(f"El alumno con matrícula {matricula} tiene {cantafis[0]} AFIs. Le hacen falta 2 para completarlas.")
+                else:
+                    print("No se encontró la matrícula.")
+        except Error as e:
+            print("Error al consultar cantafis:", e)
+
+def registrar_afis():
+    print("\nRegistro de AFI")
+    matricula = input("Ingrese la matrícula del alumno: ")
+    try:
+        with sqlite3.connect("afis.db") as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM Alumnos WHERE matricula=?", (matricula,))
+            alumno = cursor.fetchone()
+            if not alumno:
+                print("No se encontró la matrícula. Regístrese primero.")
+                return
+            print(f"Bienvenido, {alumno[1]} (Matrícula {alumno[0]}).")
+    except Error as e:
+        print("Error al iniciar sesión:", e)
+        return
+
+    categorias = {
+        1: "Académicas",
+        2: "Investigación",
+        3: "Culturales",
+        4: "Deportivas",
+        5: "Responsabilidad social",
+        6: "Aprendizaje de idiomas",
+        7: "Innovación y emprendimiento"
+    }
+
+    print("\nCategorías disponibles:")
+    for k, v in categorias.items():
+        print(f"{k}. {v}")
+
+    try:
+        cate = int(input("\nSelecciona una categoría (1-7): "))
+        if cate not in categorias:
+            print("Categoría inválida.")
+            return
+        categoria_seleccionada = categorias[cate]
+    except ValueError:
+        print("Entrada inválida.")
+        return
+
+    try:
+        with sqlite3.connect("afis.db") as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT COUNT(*) FROM Registro_afi
+                WHERE matricula=? AND categoria=?
+            """, (matricula, categoria_seleccionada))
+            ya_tiene = cursor.fetchone()[0]
+            if ya_tiene > 0:
+                print(f"Ya tienes un AFI registrado en la categoría '{categoria_seleccionada}'. No puedes registrar otro.")
+                return
+    except Error as e:
+        print("Error al verificar categoría:", e)
+        return
+
+    eventos_dict = {
+        1: [
+            'Jornadas de Revistas Académicas UANL 2024',
+            'Curso: Super Pro Designer para la simulación de procesos',
+            'Curso Santander Salud Financiera',
+            'Masterclass: Plan de desarrollo de los familiares en la empresa familiar',
+            'Simposio Atención Integral en Reumatología: Más allá de las articulaciones'
+        ],
+        2: [
+            'Jornadas de Revistas Académicas UANL 2024',
+            '3er. Congreso Internacional de Emprendimiento Social (UANL) 2025',
+            'Curso: Análisis de expresión génica diferencial y trayectorias de señalización',
+            'Simposio Atención Integral en Reumatología: Más allá de las articulaciones',
+            'Colecta Hambre Cero UANL 2025'
+        ],
+        3: [
+            'X Festival Internacional de Música Mexicana (UANL)',
+            'Exprésate – concurso de artes UANL (ilustración, fotografía, música, etc.)',
+            'Entrega del Premio Internacional Alfonso Reyes',
+            'Jornadas Fantásticas | proyecciones – UANL',
+            'Ciclo de Conferencias Hambre Cero UANL'
+        ],
+        4: [
+            'Auténticos Tigres vs. Águilas Blancas IPN (UANL partido)'
+        ],
+        5: [
+            'Brigada Tigres al Rescate – UANL',
+            'Colecta Hambre Cero UANL 2025',
+            'Ciclo de Conferencias Hambre Cero UANL',
+            'Charla “Retos del Emprendimiento Tecnológico en México” – UANL'
+        ],
+        6: [
+            '10ª Feria de Programas Internacionales UANL (movilidad, idiomas)',
+            'Feria de Internacionalización – UANL (incluye idiomas y movilidad)'
+        ],
+        7: [
+            'Final Tiger Tank 2023 – UANL',
+            'Retos del Emprendimiento Tecnológico en México conferencia magistral – UANL 2025',
+            'Programa de innovación y emprendimiento – UANL “Build Your Venture”',
+            '6to Congreso Internacional de Innovación y Transformación Educativa en la Era Digital – UANL 2025'
+        ]
+    }
+
+    eventos = eventos_dict.get(cate, [])
+    if not eventos:
+        print("No hay eventos para esta categoría")
+        return
+
+    print("\nEventos disponibles:")
+    for i in range(len(eventos)):
+        print(f"{i+1}. {eventos[i]}")
+
+    try:
+        seleccion = int(input("\nSelecciona el evento (1-5): "))
+        if 1 <= seleccion <= len(eventos):
+            evento_seleccionado = eventos[seleccion-1]
+        else:
+            print("Evento inválido")
+            return
+    except ValueError:
+        print("Entrada inválida")
+        return
+
+    folio_afi = rd.randint(1000000, 9999999)
+    print(f"\nEl folio de tu AFI es: {folio_afi}")
+
+    try:
+        with sqlite3.connect("afis.db") as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO Afis(claveafi, nombre_afi, categoria) VALUES(?, ?, ?)",
+                (folio_afi, evento_seleccionado, categoria_seleccionada)
+            )
+            cursor.execute(
+                "UPDATE Alumnos SET cantafis = cantafis + 1 WHERE matricula=?",
+                (matricula,)
+            )
+            cursor.execute(
+                "INSERT INTO Registro_afi(matricula, nombre, nombre_afi, categoria, folioafi) VALUES(?, ?, ?, ?, ?)",
+                (matricula, alumno[1], evento_seleccionado, categoria_seleccionada, folio_afi)
+            )
+            conn.commit()
+            print(f"Evento '{evento_seleccionado}' registrado exitosamente para {alumno[1]}.")
+    except Error as e:
+        print("Error al registrar AFI:", e)
+
+def eliminar_afis():
+    while True:
+        folio = input("Ingrese el folio del evento: ")
+        if not folio.strip():
+            print("El folio no puede estar vacío.")
+            continue
+        try:
+            with sqlite3.connect("afis.db") as conn:
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM Afis WHERE claveafi=?", (folio,))
+                cursor.execute("DELETE FROM Registro_afi WHERE folioafi=?", (folio,))
+                conn.commit()
+                print("El evento ha sido eliminado exitosamente.")
+        except Error as e:
+            print("Error al eliminar AFI:", e)
+
+def exportar_excel():
+    try:
+        with sqlite3.connect("afis.db") as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM Registro_afi")
+            registros = cursor.fetchall()
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "REGISTRO AFI"
+            ws.append(["Matrícula", "Nombre", "Nombre del AFI", "Categoría", "Folio AFI"])
+            for fila in registros:
+                ws.append(fila)
+            wb.save("registroafi.xlsx")
+            print("Reporte exportado exitosamente a 'registroafi.xlsx'.")
+    except Exception as e:
+        print(f"Error al exportar el reporte: {e}")
+
+def menu():
+    crear_tablas()
+    insertar_categorias()
+    while True:
+        print("\nSistema de gestión de AFIs")
+        print("1: Registrar alumno")
+        print("2: Consultar cantidad de AFIs")
+        print("3: Eliminar AFI")
+        print("4: Registrar AFI")
+        print("5: Exportar a Excel")
+        print("6: Salir")
+        opcion = input("Seleccione una opción: ")
+        if opcion == "1":
+            registrar_alumno()
+        elif opcion == "2":
+            consultar_cantafis()
+        elif opcion == "3":
+            eliminar_afis()
+        elif opcion == "4":
+            registrar_afis()
+        elif opcion == "5":
+            exportar_excel()
+        elif opcion == "6":
+            print("Gracias por usar el sistema de gestión de AFIs.")
+            break
+        else:
+            print("Opción inválida.")
+
+menu()
